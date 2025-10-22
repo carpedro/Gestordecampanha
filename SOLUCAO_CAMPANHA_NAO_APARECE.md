@@ -36,7 +36,7 @@ A causa mais provável é uma destas:
 
 2. Clique em **"New query"**
 
-3. Abra o arquivo **`VERIFICAR_E_CORRIGIR.sql`** que acabei de criar
+3. Abra o arquivo **`VERIFICAR_E_CORRIGIR_SUPABASE.sql`** que acabei de criar
 
 4. **Copie TODO** o conteúdo
 
