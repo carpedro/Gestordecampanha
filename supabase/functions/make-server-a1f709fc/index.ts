@@ -1,6 +1,4 @@
 /// <reference path="./types.d.ts" />
-// Este arquivo é uma Edge Function do Supabase executada no ambiente Deno
-// As importações npm: e jsr: são específicas do Deno Runtime
 
 // @deno-types="npm:@types/hono@4.6.14"
 import { Hono } from 'npm:hono@4.6.14';
