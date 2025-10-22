@@ -4,6 +4,9 @@ dist/
 build/
 .vite/
 
+# Build outputs
+*.tsbuildinfo
+
 # Logs
 logs
 *.log

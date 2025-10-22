@@ -52,12 +52,27 @@
         '@': path.resolve(__dirname, './src'),
       },
     },
-    build: {
-      target: 'esnext',
-      outDir: 'build',
+  build: {
+    target: 'esnext',
+    outDir: 'dist',
+    sourcemap: false,
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'radix-vendor': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-select',
+            '@radix-ui/react-tabs',
+            '@radix-ui/react-alert-dialog',
+          ],
+        },
+      },
     },
-    server: {
-      port: 3000,
-      open: true,
-    },
+  },
+  server: {
+    port: 5173,
+    open: true,
+  },
   });
