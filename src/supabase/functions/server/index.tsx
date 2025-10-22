@@ -94,6 +94,31 @@ function slugify(text: string): string {
     .replace(/-+/g, '-');
 }
 
+// Helper para transformar dados de campanha para formato do frontend
+function transformCampaignForFrontend(campaign: any): any {
+  return {
+    id: campaign.id,
+    name: campaign.name,
+    slug: campaign.slug,
+    institution: campaign.institution || campaign.institution?.name || '',
+    description: campaign.description,
+    audioUrl: campaign.audio_url || campaign.description_audio_url,
+    tagsRelated: [],
+    tagsExcluded: [],
+    startDate: campaign.start_date,
+    endDate: campaign.end_date,
+    status: campaign.status,
+    createdBy: campaign.created_by_user_id,
+    createdByName: campaign.created_by?.name || 'Sistema',
+    createdAt: campaign.created_at,
+    updatedAt: campaign.updated_at,
+    lastEditedBy: campaign.assigned_to_user_id,
+    lastEditedByName: campaign.created_by?.name || 'Sistema',
+    attachmentCount: campaign.attachments_count || 0,
+    totalAttachmentSize: 0,
+  };
+}
+
 // Helper to record edit history
 async function recordEdit(campaignId: string, userId: string, action: string, fieldChanged?: string, oldValue?: any, newValue?: any) {
   const supabase = getSupabaseAdmin();
@@ -171,7 +196,31 @@ app.get('/make-server-a1f709fc/campaigns', async (c) => {
       return c.json({ error: error.message }, 500);
     }
     
-    return c.json({ campaigns });
+    // Buscar tags para cada campanha
+    const campaignsWithTags = await Promise.all(
+      (campaigns || []).map(async (campaign: any) => {
+        const { data: tags } = await supabase
+          .from('campaign_tags')
+          .select('relation_type, tag:tags(name)')
+          .eq('campaign_id', campaign.id);
+        
+        const tagsRelated = (tags || [])
+          .filter((t: any) => t.relation_type === 'related')
+          .map((t: any) => t.tag?.name || '');
+        
+        const tagsExcluded = (tags || [])
+          .filter((t: any) => t.relation_type === 'excluded')
+          .map((t: any) => t.tag?.name || '');
+        
+        return {
+          ...transformCampaignForFrontend(campaign),
+          tagsRelated,
+          tagsExcluded,
+        };
+      })
+    );
+    
+    return c.json({ campaigns: campaignsWithTags });
   } catch (error) {
     console.error('Error fetching campaigns:', error);
     return c.json({ error: String(error) }, 500);
@@ -1012,6 +1061,72 @@ app.delete('/make-server-a1f709fc/attachments/:id', async (c) => {
     return c.json({ success: true });
   } catch (error) {
     console.error('Error deleting attachment:', error);
+    return c.json({ error: String(error) }, 500);
+  }
+});
+
+// Rename attachment
+app.put('/make-server-a1f709fc/attachments/:id/rename', async (c) => {
+  try {
+    const attachmentId = c.req.param('id');
+    const { displayName } = await c.req.json();
+    const supabase = getSupabaseAdmin();
+
+    const { data: updated, error } = await supabase
+      .from('attachments')
+      .update({ 
+        display_name: displayName,
+        file_name: displayName,
+      })
+      .eq('id', attachmentId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error renaming attachment:', error);
+      return c.json({ error: error.message }, 500);
+    }
+
+    if (!updated) {
+      return c.json({ error: 'Attachment not found' }, 404);
+    }
+
+    return c.json(updated);
+  } catch (error) {
+    console.error('Error renaming attachment:', error);
+    return c.json({ error: String(error) }, 500);
+  }
+});
+
+// Get download URL for attachment
+app.get('/make-server-a1f709fc/attachments/:id/download', async (c) => {
+  try {
+    const attachmentId = c.req.param('id');
+    const supabase = getSupabaseAdmin();
+
+    // Get attachment
+    const { data: attachment } = await supabase
+      .from('attachments')
+      .select('storage_path')
+      .eq('id', attachmentId)
+      .single();
+
+    if (!attachment) {
+      return c.json({ error: 'Attachment not found' }, 404);
+    }
+
+    // Generate signed URL (valid for 1 hour)
+    const { data: urlData } = await supabase.storage
+      .from(BUCKET_NAME)
+      .createSignedUrl(attachment.storage_path, 3600);
+
+    if (!urlData?.signedUrl) {
+      return c.json({ error: 'Failed to generate download URL' }, 500);
+    }
+
+    return c.json({ url: urlData.signedUrl });
+  } catch (error) {
+    console.error('Error getting download URL:', error);
     return c.json({ error: String(error) }, 500);
   }
 });

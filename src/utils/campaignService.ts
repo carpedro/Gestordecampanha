@@ -59,9 +59,28 @@ export const campaignService = {
     );
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error('Error creating campaign:', error);
-      throw new Error('Falha ao criar iniciativa');
+      let errorMessage = 'Falha ao criar iniciativa';
+      
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const error = await response.json();
+          errorMessage = error.error || error.message || errorMessage;
+        } else {
+          const errorText = await response.text();
+          console.error('Non-JSON error response:', errorText);
+          
+          if (response.status === 404) {
+            errorMessage = '🌐 Edge Function não encontrada. Verifique se foi deployada.';
+          } else if (response.status === 500) {
+            errorMessage = '🚨 Erro no servidor. Verifique os logs da Edge Function.';
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing error response:', e);
+      }
+      
+      throw new Error(errorMessage);
     }
 
     return await response.json();
@@ -82,9 +101,28 @@ export const campaignService = {
     );
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error('Error updating campaign:', error);
-      throw new Error('Falha ao atualizar iniciativa');
+      let errorMessage = 'Falha ao atualizar iniciativa';
+      
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const error = await response.json();
+          errorMessage = error.error || error.message || errorMessage;
+        } else {
+          const errorText = await response.text();
+          console.error('Non-JSON error response:', errorText);
+          
+          if (response.status === 404) {
+            errorMessage = 'Campanha não encontrada.';
+          } else if (response.status === 500) {
+            errorMessage = '🚨 Erro no servidor. Verifique os logs da Edge Function.';
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing error response:', e);
+      }
+      
+      throw new Error(errorMessage);
     }
 
     return await response.json();

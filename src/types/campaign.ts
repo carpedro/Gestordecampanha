@@ -19,13 +19,13 @@ export interface Campaign {
   audioUrl?: string;
   tagsRelated: string[];
   tagsExcluded: string[];
-  startDate: Date;
-  endDate: Date;
+  startDate: string; // ISO 8601 format (YYYY-MM-DD)
+  endDate: string;   // ISO 8601 format (YYYY-MM-DD)
   status: CampaignStatus;
   createdBy: string; // User ID
   createdByName: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string; // ISO 8601 timestamp
+  updatedAt: string; // ISO 8601 timestamp
   lastEditedBy?: string;
   lastEditedByName?: string;
   attachmentCount?: number; // Number of attachments
@@ -39,7 +39,7 @@ export interface CampaignFormData {
   audioUrl?: string;
   tagsRelated: string[];
   tagsExcluded: string[];
-  startDate: Date;
-  endDate: Date;
+  startDate: string; // ISO 8601 format (YYYY-MM-DD)
+  endDate: string;   // ISO 8601 format (YYYY-MM-DD)
   status: CampaignStatus;
 }

@@ -39,14 +39,7 @@ export function CampaignsApp() {
     try {
       setIsLoading(true);
       const data = await campaignService.getAll();
-      const parsedCampaigns = data.map((c: any) => ({
-        ...c,
-        startDate: new Date(c.startDate),
-        endDate: new Date(c.endDate),
-        createdAt: new Date(c.createdAt),
-        updatedAt: new Date(c.updatedAt),
-      }));
-      setCampaigns(parsedCampaigns);
+      setCampaigns(data);
     } catch (error) {
       console.error('Error loading campaigns:', error);
       toast.error('Erro ao carregar campanhas');
@@ -60,31 +53,12 @@ export function CampaignsApp() {
       if (editingCampaign) {
         // Update
         const updated = await campaignService.update(editingCampaign.id, data);
-        setCampaigns(campaigns.map(c => 
-          c.id === editingCampaign.id 
-            ? {
-                ...updated,
-                startDate: new Date(updated.startDate),
-                endDate: new Date(updated.endDate),
-                createdAt: new Date(updated.createdAt),
-                updatedAt: new Date(updated.updatedAt),
-              }
-            : c
-        ));
+        setCampaigns(campaigns.map(c => c.id === editingCampaign.id ? updated : c));
         toast.success('Campanha atualizada com sucesso!');
       } else {
         // Create
         const newCampaign = await campaignService.create(data);
-        setCampaigns([
-          {
-            ...newCampaign,
-            startDate: new Date(newCampaign.startDate),
-            endDate: new Date(newCampaign.endDate),
-            createdAt: new Date(newCampaign.createdAt),
-            updatedAt: new Date(newCampaign.updatedAt),
-          },
-          ...campaigns
-        ]);
+        setCampaigns([newCampaign, ...campaigns]);
         toast.success('Campanha criada com sucesso!');
         
         // Navigate to the new campaign
@@ -95,7 +69,27 @@ export function CampaignsApp() {
       setEditingCampaign(undefined);
     } catch (error: any) {
       console.error('Error saving campaign:', error);
-      toast.error(error.message || 'Erro ao salvar campanha');
+      
+      // Tratamento detalhado de erros
+      let errorMessage = 'Erro ao salvar campanha';
+      
+      if (error.message) {
+        if (error.message.includes('INSTITUTION_NOT_FOUND') || error.message.includes('Instituição')) {
+          errorMessage = '🏫 Instituição não encontrada. Execute o script SETUP_DATABASE.sql no Supabase SQL Editor.';
+        } else if (error.message.includes('SYSTEM_USER_NOT_CREATED')) {
+          errorMessage = '🚨 Usuário sistema não criado. Execute o script SETUP_DATABASE.sql no Supabase SQL Editor.';
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('Network')) {
+          errorMessage = '🌐 Erro de conexão. Verifique se a Edge Function está deployada.';
+        } else if (error.message.includes('unique constraint')) {
+          errorMessage = '⚠️ Já existe uma campanha com esse nome.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      toast.error(errorMessage, {
+        duration: 5000,
+      });
     }
   };
 
@@ -130,16 +124,7 @@ export function CampaignsApp() {
   const handleDuplicate = async (campaign: Campaign) => {
     try {
       const duplicated = await campaignService.duplicate(campaign.id);
-      setCampaigns([
-        {
-          ...duplicated,
-          startDate: new Date(duplicated.startDate),
-          endDate: new Date(duplicated.endDate),
-          createdAt: new Date(duplicated.createdAt),
-          updatedAt: new Date(duplicated.updatedAt),
-        },
-        ...campaigns
-      ]);
+      setCampaigns([duplicated, ...campaigns]);
       toast.success('Campanha duplicada com sucesso!');
       
       // Navigate to the duplicated campaign
@@ -158,17 +143,7 @@ export function CampaignsApp() {
     
     try {
       const updated = await campaignService.updateStatus(id, newStatus);
-      setCampaigns(campaigns.map(c => 
-        c.id === id 
-          ? {
-              ...updated,
-              startDate: new Date(updated.startDate),
-              endDate: new Date(updated.endDate),
-              createdAt: new Date(updated.createdAt),
-              updatedAt: new Date(updated.updatedAt),
-            }
-          : c
-      ));
+      setCampaigns(campaigns.map(c => c.id === id ? updated : c));
       toast.success('Status atualizado com sucesso!');
     } catch (error: any) {
       console.error('Error toggling status:', error);

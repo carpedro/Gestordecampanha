@@ -185,8 +185,24 @@ export function CampaignForm({ campaign, open, onClose, onSave }: CampaignFormPr
   };
 
   const onSubmit = (data: CampaignFormData) => {
+    // Validar descrição mínima
     if (data.description.length < 140) {
       toast.error('A descrição deve ter no mínimo 140 caracteres');
+      return;
+    }
+    
+    // Validar instituição selecionada
+    if (!data.institution) {
+      toast.error('Selecione uma instituição');
+      return;
+    }
+    
+    // Validar datas
+    const startDate = new Date(data.startDate);
+    const endDate = new Date(data.endDate);
+    
+    if (endDate < startDate) {
+      toast.error('A data de término deve ser posterior à data de início');
       return;
     }
 
@@ -237,7 +253,8 @@ export function CampaignForm({ campaign, open, onClose, onSave }: CampaignFormPr
             <Label htmlFor="institution">Instituição de Ensino *</Label>
             <Select
               value={institution}
-              onValueChange={(value) => setValue('institution', value as Institution)}
+              onValueChange={(value) => setValue('institution', value as Institution, { shouldValidate: true })}
+              required
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione uma instituição" />
@@ -250,6 +267,9 @@ export function CampaignForm({ campaign, open, onClose, onSave }: CampaignFormPr
                 ))}
               </SelectContent>
             </Select>
+            {!institution && (
+              <p className="text-sm text-red-600">Instituição é obrigatória</p>
+            )}
             {errors.institution && (
               <p className="text-sm text-red-600">{errors.institution.message}</p>
             )}
