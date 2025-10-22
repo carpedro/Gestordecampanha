@@ -105,7 +105,10 @@ INSERT INTO institutions (name, slug, short_name, is_active) VALUES
     ('Escola de Medicina', 'medicina', 'Medicina', true),
     ('Escola de Ciências da Saúde e da Vida', 'escvida', 'ESCVIDA', true),
     ('Escola de Direito', 'direito', 'Direito', true)
-ON CONFLICT (name) DO NOTHING;
+ON CONFLICT (slug) DO UPDATE SET 
+    name = EXCLUDED.name,
+    short_name = EXCLUDED.short_name,
+    is_active = EXCLUDED.is_active;
 
 -- Confirmar correções
 SELECT 
