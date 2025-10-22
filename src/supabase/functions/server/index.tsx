@@ -13,9 +13,28 @@ const BUCKET_NAME = 'make-a1f709fc-attachments';
 
 const app = new Hono();
 
+// CORS com lista de origens permitidas
+const allowedOrigins = [
+  'http://localhost:5173', // Desenvolvimento
+  'http://localhost:3000',
+  'https://campanhas.figma.site', // Produção
+  // Adicione seu domínio de produção aqui quando disponível
+];
+
 // Middleware
-app.use('*', cors());
-app.use('*', logger(console.log));
+app.use('*', cors({
+  origin: (origin) => {
+    // Permitir requisições sem origin (ex: Postman, curl)
+    if (!origin) return true;
+    // Verificar se está na lista
+    return allowedOrigins.includes(origin);
+  },
+  credentials: true,
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Client-Info', 'apikey'],
+  maxAge: 86400, // 24 horas
+}));
+app.use('*', logger((str) => log.info('Request', { message: str })));
 
 // Supabase client for server-side operations
 const getSupabaseAdmin = () => {
@@ -34,6 +53,39 @@ const getSupabaseClient = () => {
 
 // Default system user for open access
 const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
+
+// Structured logger
+const log = {
+  info: (message: string, meta?: any) => {
+    console.log(JSON.stringify({
+      level: 'info',
+      message,
+      timestamp: new Date().toISOString(),
+      ...meta
+    }));
+  },
+  error: (message: string, error?: any, meta?: any) => {
+    console.error(JSON.stringify({
+      level: 'error',
+      message,
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      } : error,
+      timestamp: new Date().toISOString(),
+      ...meta
+    }));
+  },
+  warn: (message: string, meta?: any) => {
+    console.warn(JSON.stringify({
+      level: 'warn',
+      message,
+      timestamp: new Date().toISOString(),
+      ...meta
+    }));
+  }
+};
 
 // Helper to get default user (no auth required)
 async function getDefaultUser() {
@@ -132,6 +184,64 @@ async function recordEdit(campaignId: string, userId: string, action: string, fi
     new_value: newValue,
   });
 }
+
+// ============ HEALTH CHECK ============
+
+// Health check endpoint
+app.get('/make-server-a1f709fc/health', async (c) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    
+    // Check system user
+    const { data: systemUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', SYSTEM_USER_ID)
+      .single();
+    
+    // Check institutions
+    const { data: institutions } = await supabase
+      .from('institutions')
+      .select('id')
+      .limit(1);
+    
+    // Check tables exist
+    const { data: tables } = await supabase
+      .from('campaigns')
+      .select('id')
+      .limit(0);
+    
+    const issues = [];
+    
+    if (!systemUser) {
+      issues.push('SYSTEM_USER_NOT_FOUND');
+    }
+    
+    if (!institutions || institutions.length === 0) {
+      issues.push('INSTITUTIONS_NOT_FOUND');
+    }
+    
+    const status = issues.length === 0 ? 'healthy' : 'unhealthy';
+    
+    log.info('Health check executed', { status, issues });
+    
+    return c.json({
+      status,
+      issues,
+      timestamp: new Date().toISOString(),
+      message: status === 'healthy' 
+        ? '✅ Banco de dados configurado corretamente' 
+        : '❌ Execute SETUP_DATABASE.sql no Supabase SQL Editor'
+    }, status === 'healthy' ? 200 : 500);
+  } catch (error) {
+    log.error('Health check failed', error);
+    return c.json({
+      status: 'error',
+      error: String(error),
+      message: '🚨 Erro ao verificar saúde do sistema'
+    }, 500);
+  }
+});
 
 // ============ AUTH ROUTES ============
 

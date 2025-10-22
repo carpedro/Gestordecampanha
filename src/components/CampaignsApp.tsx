@@ -14,6 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from 'sonner@2.0.3';
 import { campaignService } from '../utils/campaignService';
 import { router, Route } from '../utils/router';
+import { projectId, publicAnonKey } from '../utils/supabase/info';
 
 export function CampaignsApp() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -25,6 +26,7 @@ export function CampaignsApp() {
   const [filters, setFilters] = useState<CampaignFiltersState>({});
 
   useEffect(() => {
+    checkHealth();
     loadCampaigns();
     
     // Subscribe to route changes
@@ -34,6 +36,33 @@ export function CampaignsApp() {
     
     return unsubscribe;
   }, []);
+
+  const checkHealth = async () => {
+    try {
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-a1f709fc/health`,
+        {
+          headers: {
+            Authorization: `Bearer ${publicAnonKey}`,
+          },
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (data.status !== 'healthy') {
+        toast.warning(data.message, {
+          duration: 10000,
+          description: 'Verifique a configuração do banco de dados.',
+        });
+      } else {
+        console.log('✅ Sistema saudável:', data.message);
+      }
+    } catch (error) {
+      console.error('Health check failed:', error);
+      // Não mostrar erro ao usuário se o health check falhar (pode ser Edge Function não deployada)
+    }
+  };
 
   const loadCampaigns = async () => {
     try {
